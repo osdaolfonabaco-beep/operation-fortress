@@ -3,45 +3,51 @@ from bs4 import BeautifulSoup
 
 URL = "https://techcrunch.com/category/startups/"
 headers = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/91.0.4472.124 Safari/537.36"
+    )
 }
 
-# --- FASE 1: OBTENER LOS ENLACES DE LA PÁGINA PRINCIPAL ---
 main_page_response = requests.get(URL, headers=headers)
+
 if main_page_response.status_code != 200:
-    print(f"❌ Error al conectar con la página principal. Código: {main_page_response.status_code}")
+    print(f"Error al conectar. Código: {main_page_response.status_code}")
 else:
-    main_soup = BeautifulSoup(main_page_response.content, 'html.parser')
-    article_cards = main_soup.find_all('div', class_='loop-card')
+    main_soup = BeautifulSoup(main_page_response.content, "html.parser")
+    article_cards = main_soup.find_all("div", class_="loop-card")
 
-    print(f"✅ Se encontraron {len(article_cards)} artículos. Procesando los primeros 3...\n")
+    print(f"✅ Se encontraron {len(article_cards)} artículos.")
+    print("Procesando los primeros 3...\n")
 
-    # --- FASE 2: VISITAR CADA ENLACE Y EXTRAER EL RESUMEN ---
-    # Limitamos a 3 para no hacer demasiadas peticiones mientras probamos
-    for card in article_cards[:3]: 
-        title_link_element = card.find('a', class_='loop-card__title-link')
+    for card in article_cards[:3]:
+        title_link_element = card.find("a", class_="loop-card__title-link")
 
-        if title_link_element:
-            title = title_link_element.get_text(strip=True)
-            link = title_link_element['href']
+        if not title_link_element:
+            continue
 
-            print(f"--- Artículo ---")
-            print(f"Título: {title}")
-            print(f"Enlace: {link}")
+        title = title_link_element.get_text(strip=True)
+        link = title_link_element["href"]
 
-            # Ahora visitamos la página del artículo individual
-            article_response = requests.get(link, headers=headers)
-            if article_response.status_code == 200:
-                article_soup = BeautifulSoup(article_response.content, 'html.parser')
+        print("--- Artículo ---")
+        print(f"Título: {title}")
+        print(f"Enlace: {link}")
 
-                # Usamos la pista que encontramos para el resumen
-                summary_element = article_soup.find('p', class_='wp-block-paragraph')
+        article_response = requests.get(link, headers=headers)
+        if article_response.status_code != 200:
+            print("No se pudo obtener el resumen.\n")
+            continue
 
-                if summary_element:
-                    summary = summary_element.get_text(strip=True)
-                    print(f"Resumen: {summary}\n")
-                else:
-                    print("Resumen: No encontrado.\n")
+        article_soup = BeautifulSoup(article_response.content, "html.parser")
+        summary_element = article_soup.find("p", class_="wp-block-paragraph")
+
+        if summary_element:
+            summary = summary_element.get_text(strip=True)
+            if len(summary) > 70:
+                summary_preview = summary[:70] + "..."
             else:
-                print("No se pudo acceder al artículo para obtener resumen.\n")
-                
+                summary_preview = summary
+            print(f"Resumen: {summary_preview}\n")
+        else:
+            print("Resumen: No encontrado.\n")
